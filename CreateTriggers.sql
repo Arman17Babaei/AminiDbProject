@@ -37,8 +37,8 @@ CREATE TRIGGER trig_update_attribute AFTER UPDATE ON Attribute
 DELIMITER ;
 -- -----------------------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS `mydb`.trig_update_cart;
-CREATE TRIGGER trig_update_cart AFTER UPDATE ON Cart
-	FOR EACH ROW UPDATE Cart SET DateLastEdit = SYSDATE() WHERE CustomerID = NEW.CustomerID;
+CREATE TRIGGER trig_update_cart BEFORE UPDATE ON Cart
+	FOR EACH ROW SET NEW.DateLastEdit = SYSDATE();
 
 DROP TRIGGER IF EXISTS `mydb`.trig_update_cart_from_contents_insert;
 CREATE TRIGGER trig_update_cart_from_contents_insert AFTER INSERT ON CartContainsProduct
@@ -162,11 +162,11 @@ CREATE TRIGGER trig_insert_subcategory BEFORE INSERT ON SubCategory
 
 DROP TRIGGER IF EXISTS `mydb`.trig_update_subcategory;
 DELIMITER //
-CREATE TRIGGER trig_update_subcategory AFTER UPDATE ON SubCategory
+CREATE TRIGGER trig_update_subcategory BEFORE UPDATE ON SubCategory
 	FOR EACH ROW 
 	BEGIN
 		IF (NEW.DateCreate != OLD.DateCreate) THEN
-			UPDATE SubCategory SET DateCreate = OLD.DateCreate WHERE CategoryID = NEW.CategoryID AND SubCategoryID = NEW.SubCategoryID;
+			SET NEW.DateCreate = OLD.DateCreate;
 		END IF;
 	END;
 //
@@ -184,13 +184,13 @@ DELIMITER ;
 
 DROP TRIGGER IF EXISTS `mydb`.trig_update_suborder;
 DELIMITER //
-CREATE TRIGGER trig_update_suborder AFTER UPDATE ON SubOrder
+CREATE TRIGGER trig_update_suborder BEFORE UPDATE ON SubOrder
 	FOR EACH ROW 
 	BEGIN
 		IF (NEW.DateCreate != OLD.DateCreate) THEN
-			UPDATE SubOrder SET DateCreate = OLD.DateCreate WHERE OrderID = NEW.OrderID AND SubOrderID = NEW.SubOrderID;
+			SET NEW.DateCreate = OLD.DateCreate;
 		END IF;
-        UPDATE SubOrder SET DateLastEdit = SYSDATE() WHERE OrderID = NEW.OrderID AND SubOrderID = NEW.SubOrderID;
+        SET NEW.DateLastEdit = SYSDATE();
 	END;
 //
 DELIMITER ;
@@ -204,13 +204,14 @@ CREATE TRIGGER trig_insert_transfer BEFORE INSERT ON Transfer
 	FOR EACH ROW SET NEW.`Date` = SYSDATE();
 -- -----------------------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_dicount_usage_count_insert;
+DROP TRIGGER IF EXISTS `mydb`.trig_handle_discount_usage_count_insert;
 DELIMITER //
-CREATE TRIGGER trig_handle_dicount_usage_count_insert AFTER INSERT ON Order_
+CREATE TRIGGER trig_handle_discount_usage_count_insert AFTER INSERT ON Order_
 	FOR EACH ROW 
     BEGIN
 		IF (NEW.DiscountCodeID IS NOT NULL) THEN
 			IF ((SELECT MaxUsage FROM DiscountCode WHERE DiscountID = NEW.DiscountCodeID) = 
-					(SELECT CurrentUsageCount FROM DicountCode WHERE DiscountID = NEW.DiscountCodeID)) THEN
+					(SELECT CurrentUsageCount FROM DiscountCode WHERE DiscountID = NEW.DiscountCodeID)) THEN
 				SIGNAL SQLSTATE '45000'
 					SET MESSAGE_TEXT = 'Max usage of discount code reached, cannot use code.';
 			ELSE 
@@ -222,8 +223,9 @@ CREATE TRIGGER trig_handle_dicount_usage_count_insert AFTER INSERT ON Order_
 DELIMITER ;
 
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_dicount_usage_count_update;
+DROP TRIGGER IF EXISTS `mydb`.trig_handle_discount_usage_count_update;
 DELIMITER //
-CREATE TRIGGER trig_handle_dicount_usage_count_update AFTER UPDATE ON Order_
+CREATE TRIGGER trig_handle_discount_usage_count_update AFTER UPDATE ON Order_
 	FOR EACH ROW 
     BEGIN
 		IF (OLD.DiscountCodeID IS NOT NULL) THEN
@@ -231,7 +233,7 @@ CREATE TRIGGER trig_handle_dicount_usage_count_update AFTER UPDATE ON Order_
         END IF;
         IF (NEW.DiscountCodeID IS NOT NULL) THEN
 			IF ((SELECT MaxUsage FROM DiscountCode WHERE DiscountID = NEW.DiscountCodeID) = 
-					(SELECT CurrentUsageCount FROM DicountCode WHERE DiscountID = NEW.DiscountCodeID)) THEN
+					(SELECT CurrentUsageCount FROM DiscountCode WHERE DiscountID = NEW.DiscountCodeID)) THEN
 				SIGNAL SQLSTATE '45000'
 					SET MESSAGE_TEXT = 'Max usage of discount code reached, cannot use code.';
 			ELSE 
@@ -295,6 +297,22 @@ CREATE TRIGGER trig_handle_product_total_purchases_update AFTER UPDATE ON SubOrd
     END;
 //
 DELIMITER ;
+
+DROP TRIGGER IF EXISTS `mydb`.trig_handle_product_total_purchases_update_of_suborder;
+DELIMITER //
+CREATE TRIGGER trig_handle_product_total_purchases_update_of_suborder AFTER UPDATE ON SubOrder
+	FOR EACH ROW 
+    BEGIN
+		IF (NEW.CurrentState = 1) THEN
+			SET SQL_SAFE_UPDATES = 0;
+			UPDATE Product SET TotalPurchases = TotalPurchases + 
+				(SELECT SUM(Quantity) FROM SubOrderHasProduct WHERE ProductID = Product.ProductID 
+					AND OrderID = NEW.OrderID AND SubOrderID = NEW.SubOrderID);
+			SET SQL_SAFE_UPDATES = 1;
+        END IF;
+    END;
+//
+DELIMITER ;
 -- -----------------------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_product_quantity_insert;
 CREATE TRIGGER trig_handle_product_quantity_insert AFTER INSERT ON Stores
@@ -338,7 +356,8 @@ DROP TRIGGER IF EXISTS `mydb`.trig_handle_valid_discount_code_usage_insert;
 DELIMITER //
 CREATE TRIGGER trig_handle_valid_discount_code_usage_insert AFTER INSERT ON Order_
 	FOR EACH ROW 
-		IF (NOT EXISTS (SELECT * FROM Uses WHERE CustomerID = NEW.CustomerID AND DiscountCodeID = NEW.DiscountCodeID
+		IF ((NEW.DiscountCodeID IS NOT NULL)
+			AND NOT EXISTS (SELECT * FROM Uses WHERE CustomerID = NEW.CustomerID AND DiscountCodeID = NEW.DiscountCodeID
 				AND SYSDATE() <= (SELECT DateEnd FROM DiscountCode WHERE DiscountID = NEW.DiscountCodeID))) THEN
 			SIGNAL SQLSTATE '45003'
 				SET MESSAGE_TEXT = 'Customer cannot use discount code, no permission.';
@@ -350,7 +369,8 @@ DROP TRIGGER IF EXISTS `mydb`.trig_handle_valid_discount_code_usage_update;
 DELIMITER //
 CREATE TRIGGER trig_handle_valid_discount_code_usage_update AFTER UPDATE ON Order_
 	FOR EACH ROW 
-		IF (NOT EXISTS (SELECT * FROM Uses WHERE CustomerID = NEW.CustomerID AND DiscountCodeID = NEW.DiscountCodeID
+		IF ((NEW.DiscountCodeID IS NOT NULL)
+			AND NOT EXISTS (SELECT * FROM Uses WHERE CustomerID = NEW.CustomerID AND DiscountCodeID = NEW.DiscountCodeID
 				AND SYSDATE() <= (SELECT DateEnd FROM DiscountCode WHERE DiscountID = NEW.DiscountCodeID))) THEN
 			SIGNAL SQLSTATE '45003'
 				SET MESSAGE_TEXT = 'Customer cannot use new discount code, no permission.';
@@ -381,26 +401,24 @@ CREATE TRIGGER trig_handle_order_is_complete_and_state_update AFTER UPDATE ON Su
 DELIMITER ;
 -- -----------------------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_auto_partial_key_video;
-CREATE TRIGGER trig_handle_auto_partial_key_video AFTER INSERT ON Video
+CREATE TRIGGER trig_handle_auto_partial_key_video BEFORE INSERT ON Video
 	FOR EACH ROW 
-		UPDATE Video SET ID = (SELECT COUNT(*) FROM Video WHERE ProductID = NEW.ProductID) + 1 WHERE ProductID = NEW.ProductID;
+		SET NEW.ID = (SELECT COUNT(*) FROM Video WHERE ProductID = NEW.ProductID) + 1;
 
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_auto_partial_key_picture;
-CREATE TRIGGER trig_handle_auto_partial_key_picture AFTER INSERT ON Picture
+CREATE TRIGGER trig_handle_auto_partial_key_picture BEFORE INSERT ON Picture
 	FOR EACH ROW 
-		UPDATE Picture SET ID = (SELECT COUNT(*) FROM Picture WHERE ProductID = NEW.ProductID) + 1 WHERE ProductID = NEW.ProductID;
+		SET NEW.ID = (SELECT COUNT(*) FROM Picture WHERE ProductID = NEW.ProductID) + 1;
 
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_auto_partial_key_suborder;
-CREATE TRIGGER trig_handle_auto_partial_key_suborder AFTER INSERT ON SubOrder
+CREATE TRIGGER trig_handle_auto_partial_key_suborder BEFORE INSERT ON SubOrder
 	FOR EACH ROW 
-		UPDATE SubOrder SET SubOrderID = (SELECT COUNT(*) FROM SubOrder WHERE OrderID = NEW.OrderID) + 1
-				WHERE SubOrderID = NEW.SubOrderID AND OrderID = NEW.OrderID;
+		SET NEW.SubOrderID = (SELECT COUNT(*) FROM SubOrder WHERE OrderID = NEW.OrderID) + 1;
 
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_auto_partial_key_subcategory;
-CREATE TRIGGER trig_handle_auto_partial_key_subcategory AFTER INSERT ON SubCategory
+CREATE TRIGGER trig_handle_auto_partial_key_subcategory BEFORE INSERT ON SubCategory
 	FOR EACH ROW 
-		UPDATE SubCategory SET SubCategoryID = (SELECT COUNT(*) FROM SubCategory WHERE CategoryID = NEW.CategoryID) + 1
-				WHERE SubCategoryID = NEW.SubCategoryID AND CategoryID = NEW.CategoryID;
+		SET NEW.SubCategoryID = (SELECT COUNT(*) FROM SubCategory WHERE CategoryID = NEW.CategoryID) + 1;
 -- -----------------------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS `mydb`.trig_handle_valid_storage_insert;
 DELIMITER //

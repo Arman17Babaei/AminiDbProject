@@ -322,7 +322,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`DiscountCode` (
     REFERENCES `mydb`.`Admin` (`AccountID`)
     ON DELETE SET NULL
     ON UPDATE CASCADE,
-  CONSTRAINT `c_DiscountCode_Valid_Range` CHECK (DateEnd <= DateCreate))
+  CONSTRAINT `c_DiscountCode_Valid_Range` CHECK (DateEnd >= DateCreate))
 ENGINE = InnoDB;
 
 
