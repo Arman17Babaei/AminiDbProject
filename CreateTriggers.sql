@@ -85,8 +85,18 @@ CREATE TRIGGER trig_update_delivery AFTER UPDATE ON Delivery
 DELIMITER ;
 -- -----------------------------------------------------------------------------------------
 DROP TRIGGER IF EXISTS `mydb`.trig_insert_discount_code;
+DELIMITER //
 CREATE TRIGGER trig_insert_discount_code BEFORE INSERT ON DiscountCode
-	FOR EACH ROW SET NEW.DateCreate = SYSDATE();
+	FOR EACH ROW
+    BEGIN
+		IF (EXISTS (SELECT * FROM DiscountCode WHERE Code_ = NEW.Code_ AND SYSDATE() <= DateEnd)) THEN
+			SIGNAL SQLSTATE '45006'
+					SET MESSAGE_TEXT = 'Cannot create discount code, duplicate code.';
+        END IF;
+		SET NEW.DateCreate = SYSDATE();
+	END;
+//
+DELIMITER ;
 
 DROP TRIGGER IF EXISTS `mydb`.trig_update_discount_code;
 DELIMITER //
@@ -96,6 +106,10 @@ CREATE TRIGGER trig_update_discount_code AFTER UPDATE ON DiscountCode
 		IF (NEW.DateCreate != OLD.DateCreate) THEN
 			UPDATE DiscountCode SET DateCreate = OLD.DateCreate WHERE DiscountID = NEW.DiscountID;
 		END IF;
+        IF ((SELECT COUNT(*) FROM DiscountCode WHERE Code_ = NEW.Code_ AND SYSDATE() <= DateEnd) > 1) THEN
+			SIGNAL SQLSTATE '45006'
+					SET MESSAGE_TEXT = 'Cannot create discount code, duplicate code.';
+        END IF;
 	END;
 //
 DELIMITER ;
@@ -431,11 +445,198 @@ CREATE TRIGGER trig_handle_valid_storage_insert AFTER INSERT ON Stores
 		END IF;
 //
 DELIMITER ;
+-- -----------------------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS `mydb`.trig_product_handle_attribute_value_insert;
+DELIMITER //
+CREATE TRIGGER trig_product_handle_attribute_value_insert BEFORE INSERT ON ProductHasAtt
+	FOR EACH ROW 
+	BEGIN
+		IF (NEW.AttributeID IN (SELECT AttributeID FROM Att_String)) THEN
+        BEGIN
+			SET NEW.AttributeQualValue = NULL;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+        ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Numerical)) THEN
+        BEGIN
+			IF ((NEW.AttributeNumValue < (SELECT `Start` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))
+				OR (NEW.AttributeNumValue > (SELECT `Finish` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))) THEN
+					SIGNAL SQLSTATE '45005'
+						SET MESSAGE_TEXT = 'Invalid value for numerical attribute, out of range.';
+			END IF;
+            SET NEW.AttributeQualValue = NULL;
+		END;
+		ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Qualitative)) THEN
+        BEGIN
+			IF (NEW.AttributeQualValue NOT IN (SELECT ID FROM Quality WHERE AttQualitativeID = NEW.AttributeID)) THEN
+				SIGNAL SQLSTATE '45005'
+					SET MESSAGE_TEXT = 'Invalid value for qualitative attribute, invalid quality.';
+			END IF;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+		END IF;
+    END;
+//
+DELIMITER ;
 
+DROP TRIGGER IF EXISTS `mydb`.trig_category_handle_attribute_value_insert;
+DELIMITER //
+CREATE TRIGGER trig_category_handle_attribute_value_insert BEFORE INSERT ON CategoryHasAtt
+	FOR EACH ROW 
+	BEGIN
+		IF (NEW.AttributeID IN (SELECT AttributeID FROM Att_String)) THEN
+        BEGIN
+			SET NEW.AttributeQualValue = NULL;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+        ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Numerical)) THEN
+        BEGIN
+			IF ((NEW.AttributeNumValue < (SELECT `Start` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))
+				OR (NEW.AttributeNumValue > (SELECT `Finish` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))) THEN
+					SIGNAL SQLSTATE '45005'
+						SET MESSAGE_TEXT = 'Invalid value for numerical attribute, out of range.';
+			END IF;
+            SET NEW.AttributeQualValue = NULL;
+		END;
+		ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Qualitative)) THEN
+        BEGIN
+			IF (NEW.AttributeQualValue NOT IN (SELECT ID FROM Quality WHERE AttQualitativeID = NEW.AttributeID)) THEN
+				SIGNAL SQLSTATE '45005'
+					SET MESSAGE_TEXT = 'Invalid value for qualitative attribute, invalid quality.';
+			END IF;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+		END IF;
+    END;
+//
+DELIMITER ;
 
+DROP TRIGGER IF EXISTS `mydb`.trig_subcategory_handle_attribute_value_insert;
+DELIMITER //
+CREATE TRIGGER trig_subcategory_handle_attribute_value_insert BEFORE INSERT ON SubCategoryHasAtt
+	FOR EACH ROW 
+	BEGIN
+		IF (NEW.AttributeID IN (SELECT AttributeID FROM Att_String)) THEN
+        BEGIN
+			SET NEW.AttributeQualValue = NULL;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+        ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Numerical)) THEN
+        BEGIN
+			IF ((NEW.AttributeNumValue < (SELECT `Start` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))
+				OR (NEW.AttributeNumValue > (SELECT `Finish` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))) THEN
+					SIGNAL SQLSTATE '45005'
+						SET MESSAGE_TEXT = 'Invalid value for numerical attribute, out of range.';
+			END IF;
+            SET NEW.AttributeQualValue = NULL;
+		END;
+		ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Qualitative)) THEN
+        BEGIN
+			IF (NEW.AttributeQualValue NOT IN (SELECT ID FROM Quality WHERE AttQualitativeID = NEW.AttributeID)) THEN
+				SIGNAL SQLSTATE '45005'
+					SET MESSAGE_TEXT = 'Invalid value for qualitative attribute, invalid quality.';
+			END IF;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+		END IF;
+    END;
+//
+DELIMITER ;
 
+DROP TRIGGER IF EXISTS `mydb`.trig_product_handle_attribute_value_update;
+DELIMITER //
+CREATE TRIGGER trig_product_handle_attribute_value_update BEFORE UPDATE ON ProductHasAtt
+	FOR EACH ROW 
+	BEGIN
+		IF (NEW.AttributeID IN (SELECT AttributeID FROM Att_String)) THEN
+        BEGIN
+			SET NEW.AttributeQualValue = NULL;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+        ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Numerical)) THEN
+        BEGIN
+			IF ((NEW.AttributeNumValue < (SELECT `Start` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))
+				OR (NEW.AttributeNumValue > (SELECT `Finish` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))) THEN
+					SIGNAL SQLSTATE '45005'
+						SET MESSAGE_TEXT = 'Invalid value for numerical attribute, out of range.';
+			END IF;
+            SET NEW.AttributeQualValue = NULL;
+		END;
+		ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Qualitative)) THEN
+        BEGIN
+			IF (NEW.AttributeQualValue NOT IN (SELECT ID FROM Quality WHERE AttQualitativeID = NEW.AttributeID)) THEN
+				SIGNAL SQLSTATE '45005'
+					SET MESSAGE_TEXT = 'Invalid value for qualitative attribute, invalid quality.';
+			END IF;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+		END IF;
+    END;
+//
+DELIMITER ;
 
+DROP TRIGGER IF EXISTS `mydb`.trig_category_handle_attribute_value_update;
+DELIMITER //
+CREATE TRIGGER trig_category_handle_attribute_value_update BEFORE UPDATE ON CategoryHasAtt
+	FOR EACH ROW 
+	BEGIN
+		IF (NEW.AttributeID IN (SELECT AttributeID FROM Att_String)) THEN
+        BEGIN
+			SET NEW.AttributeQualValue = NULL;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+        ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Numerical)) THEN
+        BEGIN
+			IF ((NEW.AttributeNumValue < (SELECT `Start` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))
+				OR (NEW.AttributeNumValue > (SELECT `Finish` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))) THEN
+					SIGNAL SQLSTATE '45005'
+						SET MESSAGE_TEXT = 'Invalid value for numerical attribute, out of range.';
+			END IF;
+            SET NEW.AttributeQualValue = NULL;
+		END;
+		ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Qualitative)) THEN
+        BEGIN
+			IF (NEW.AttributeQualValue NOT IN (SELECT ID FROM Quality WHERE AttQualitativeID = NEW.AttributeID)) THEN
+				SIGNAL SQLSTATE '45005'
+					SET MESSAGE_TEXT = 'Invalid value for qualitative attribute, invalid quality.';
+			END IF;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+		END IF;
+    END;
+//
+DELIMITER ;
 
+DROP TRIGGER IF EXISTS `mydb`.trig_subcategory_handle_attribute_value_update;
+DELIMITER //
+CREATE TRIGGER trig_subcategory_handle_attribute_value_update BEFORE UPDATE ON SubCategoryHasAtt
+	FOR EACH ROW 
+	BEGIN
+		IF (NEW.AttributeID IN (SELECT AttributeID FROM Att_String)) THEN
+        BEGIN
+			SET NEW.AttributeQualValue = NULL;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+        ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Numerical)) THEN
+        BEGIN
+			IF ((NEW.AttributeNumValue < (SELECT `Start` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))
+				OR (NEW.AttributeNumValue > (SELECT `Finish` FROM Att_Numerical WHERE AttributeID = NEW.AttributeID))) THEN
+					SIGNAL SQLSTATE '45005'
+						SET MESSAGE_TEXT = 'Invalid value for numerical attribute, out of range.';
+			END IF;
+            SET NEW.AttributeQualValue = NULL;
+		END;
+		ELSEIF (NEW.AttributeID IN (SELECT AttributeID FROM Att_Qualitative)) THEN
+        BEGIN
+			IF (NEW.AttributeQualValue NOT IN (SELECT ID FROM Quality WHERE AttQualitativeID = NEW.AttributeID)) THEN
+				SIGNAL SQLSTATE '45005'
+					SET MESSAGE_TEXT = 'Invalid value for qualitative attribute, invalid quality.';
+			END IF;
+            SET NEW.AttributeNumValue = NULL;
+		END;
+		END IF;
+    END;
+//
+DELIMITER ;
 
 
 

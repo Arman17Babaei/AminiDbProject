@@ -228,6 +228,8 @@ DROP TABLE IF EXISTS `mydb`.`CategoryHasAtt` ;
 CREATE TABLE IF NOT EXISTS `mydb`.`CategoryHasAtt` (
   `AttributeID` INT NOT NULL,
   `CategoryID` INT NOT NULL,
+  `AttributeNumValue` DECIMAL,
+  `AttributeQualValue` INT,
   PRIMARY KEY (`AttributeID`, `CategoryID`),
   INDEX `fk_CategoryHasAtt_CategoryID_idx` (`CategoryID` ASC) VISIBLE,
   CONSTRAINT `fk_CategoryHasAtt_AttributeID`
@@ -239,7 +241,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`CategoryHasAtt` (
     FOREIGN KEY (`CategoryID`)
     REFERENCES `mydb`.`Category` (`CategoryID`)
     ON DELETE CASCADE
-    ON UPDATE CASCADE)
+    ON UPDATE CASCADE,
+  CONSTRAINT `c_category_att_value_valid` CHECK ((`AttributeNumValue` IS NULL) OR (`AttributeQualValue` IS NULL)) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -429,6 +432,8 @@ DROP TABLE IF EXISTS `mydb`.`ProductHasAtt` ;
 CREATE TABLE IF NOT EXISTS `mydb`.`ProductHasAtt` (
   `AttributeID` INT NOT NULL,
   `ProductID` INT NOT NULL,
+  `AttributeNumValue` DECIMAL,
+  `AttributeQualValue` INT,
   PRIMARY KEY (`AttributeID`, `ProductID`),
   INDEX `fk_ProductHasAtt_ProductID_idx` (`ProductID` ASC) VISIBLE,
   CONSTRAINT `fk_ProductHasAtt_AttributeID`
@@ -440,7 +445,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`ProductHasAtt` (
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
     ON DELETE CASCADE
-    ON UPDATE CASCADE)
+    ON UPDATE CASCADE,
+  CONSTRAINT `c_product_att_value_valid` CHECK ((`AttributeNumValue` IS NULL) OR (`AttributeQualValue` IS NULL)) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -491,7 +497,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Review` (
   `CustomerID` INT NOT NULL,
   `Date` DATETIME NOT NULL,
   `Comment` NVARCHAR(100) NULL,
-  `Rate` INT NULL CHECK (1 <= Rate AND Rate <= 10),
+  `Rate` INT NULL CHECK (0 <= Rate AND Rate <= 100),
   PRIMARY KEY (`ProductID`, `CustomerID`),
   INDEX `fk_Review_CustomerID_idx` (`CustomerID` ASC) VISIBLE,
   CONSTRAINT `fk_Review_CustomerID`
@@ -582,6 +588,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`SubCategoryHasAtt` (
   `AttributeID` INT NOT NULL,
   `CategoryID` INT NOT NULL,
   `SubCategoryID` INT NOT NULL,
+  `AttributeNumValue` DECIMAL,
+  `AttributeQualValue` INT,
   PRIMARY KEY (`AttributeID`, `SubCategoryID`, `CategoryID`),
   INDEX `fk_SubCategoryHasAtt_SubCategoryID_idx` (`CategoryID` ASC, `SubCategoryID` ASC) VISIBLE,
   CONSTRAINT `fk_SubCategoryHasAtt_AttributeID`
@@ -593,7 +601,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`SubCategoryHasAtt` (
     FOREIGN KEY (`CategoryID` , `SubCategoryID`)
     REFERENCES `mydb`.`SubCategory` (`CategoryID` , `SubCategoryID`)
     ON DELETE CASCADE
-    ON UPDATE CASCADE)
+    ON UPDATE CASCADE,
+  CONSTRAINT `c_subcategory_att_value_valid` CHECK ((`AttributeNumValue` IS NULL) OR (`AttributeQualValue` IS NULL)) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
