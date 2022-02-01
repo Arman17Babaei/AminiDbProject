@@ -23,13 +23,13 @@ USE `mydb` ;
 DROP TABLE IF EXISTS `mydb`.`Account_` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Account_` (
-  `AccountID` INT NOT NULL,
+  `AccountID` INT NOT NULL AUTO_INCREMENT,
   `FirstName` NVARCHAR(45) NOT NULL,
   `LastName` NVARCHAR(45) NOT NULL,
   `DateCreate` DATETIME NOT NULL,
-  `Photo` BLOB NOT NULL,
+  `Photo` BLOB,
   `PassHash` INT NOT NULL,
-  `Email` VARCHAR(45) NOT NULL,
+  `Email` VARCHAR(45) NOT NULL CHECK (Email LIKE '%_@__%.__%'),
   PRIMARY KEY (`AccountID`))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
@@ -41,7 +41,7 @@ DEFAULT CHARACTER SET = utf8;
 DROP TABLE IF EXISTS `mydb`.`Address` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Address` (
-  `AddressID` INT NOT NULL,
+  `AddressID` INT NOT NULL AUTO_INCREMENT,
   `City` NVARCHAR(45) NOT NULL,
   `Street` NVARCHAR(45) NOT NULL,
   `Floor` INT NULL,
@@ -58,13 +58,13 @@ DROP TABLE IF EXISTS `mydb`.`Admin` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Admin` (
   `AccountID` INT NOT NULL,
-  `AccessLimit` SMALLINT NOT NULL,
+  `AccessLimit` SMALLINT NOT NULL CHECK (1 <= AccessLimit AND AccessLimit <= 3),
   PRIMARY KEY (`AccountID`),
   CONSTRAINT `fk_Admin_AccountID`
     FOREIGN KEY (`AccountID`)
     REFERENCES `mydb`.`Account_` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -76,14 +76,15 @@ DROP TABLE IF EXISTS `mydb`.`Att_Numerical` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Att_Numerical` (
   `AttributeID` INT NOT NULL,
-  `Start` DECIMAL NOT NULL,
-  `Finish` DECIMAL NOT NULL,
+  `Start` DECIMAL NOT NULL DEFAULT 0.0,
+  `Finish` DECIMAL NOT NULL DEFAULT 0.0,
   PRIMARY KEY (`AttributeID`),
   CONSTRAINT `fk_Att_Numerical_AttributeID`
     FOREIGN KEY (`AttributeID`)
     REFERENCES `mydb`.`Attribute` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `c_Att_Numerical_Valid_Range` CHECK (Start <= Finish))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -99,8 +100,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Att_Qualitative` (
   CONSTRAINT `fk_Att_Qualitative_AttributeID`
     FOREIGN KEY (`AttributeID`)
     REFERENCES `mydb`.`Attribute` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -111,7 +112,7 @@ DEFAULT CHARACTER SET = utf8;
 DROP TABLE IF EXISTS `mydb`.`Attribute` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Attribute` (
-  `AttributeID` INT NOT NULL,
+  `AttributeID` INT NOT NULL AUTO_INCREMENT,
   `Name` NVARCHAR(45) NOT NULL,
   `DateCreate` DATETIME NOT NULL,
   PRIMARY KEY (`AttributeID`))
@@ -130,8 +131,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Att_String` (
   CONSTRAINT `fk_Att_String_AttributeID`
     FOREIGN KEY (`AttributeID`)
     REFERENCES `mydb`.`Attribute` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -143,8 +144,9 @@ DROP TABLE IF EXISTS `mydb`.`CanStore` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`CanStore` (
   `StorageID` INT NOT NULL,
+  `CategoryID` INT NOT NULL,
   `SubCategoryID` INT NOT NULL,
-  PRIMARY KEY (`StorageID`, `SubCategoryID`),
+  PRIMARY KEY (`StorageID`, `CategoryID`, `SubCategoryID`),
   INDEX `fk_CanStore_SubCategoryID_idx` (`SubCategoryID` ASC) VISIBLE,
   CONSTRAINT `fk_CanStore_StorageID`
     FOREIGN KEY (`StorageID`)
@@ -152,10 +154,10 @@ CREATE TABLE IF NOT EXISTS `mydb`.`CanStore` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_CanStore_SubCategoryID`
-    FOREIGN KEY (`SubCategoryID`)
-    REFERENCES `mydb`.`SubCategory` (`CategoryID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    FOREIGN KEY (`CategoryID` , `SubCategoryID`)
+    REFERENCES `mydb`.`SubCategory` (`CategoryID` , `SubCategoryID`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -171,8 +173,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Cart` (
   CONSTRAINT `fk_Cart_CustomerID`
     FOREIGN KEY (`CustomerID`)
     REFERENCES `mydb`.`Customer` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -185,19 +187,19 @@ DROP TABLE IF EXISTS `mydb`.`CartContainsProduct` ;
 CREATE TABLE IF NOT EXISTS `mydb`.`CartContainsProduct` (
   `CartID` INT NOT NULL,
   `ProductID` INT NOT NULL,
-  `Quantity` INT UNSIGNED NOT NULL DEFAULT 1,
+  `Quantity` INT UNSIGNED NOT NULL DEFAULT 1 CHECK (Quantity > 0),
   PRIMARY KEY (`CartID`, `ProductID`),
   INDEX `fk_CartContainsProduct_ProductID_idx` (`ProductID` ASC) VISIBLE,
   CONSTRAINT `fk_CartContainsProduct_CartID`
     FOREIGN KEY (`CartID`)
     REFERENCES `mydb`.`Cart` (`CustomerID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_CartContainsProduct_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -208,7 +210,7 @@ DEFAULT CHARACTER SET = utf8;
 DROP TABLE IF EXISTS `mydb`.`Category` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Category` (
-  `CategoryID` INT NOT NULL,
+  `CategoryID` INT NOT NULL AUTO_INCREMENT,
   `Name` NVARCHAR(45) NOT NULL,
   `Description` NVARCHAR(256) NOT NULL,
   `DateCreate` DATETIME NOT NULL,
@@ -231,13 +233,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`CategoryHasAtt` (
   CONSTRAINT `fk_CategoryHasAtt_AttributeID`
     FOREIGN KEY (`AttributeID`)
     REFERENCES `mydb`.`Attribute` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_CategoryHasAtt_CategoryID`
     FOREIGN KEY (`CategoryID`)
     REFERENCES `mydb`.`Category` (`CategoryID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -253,8 +255,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Customer` (
   CONSTRAINT `fk_Customer_AccountID`
     FOREIGN KEY (`AccountID`)
     REFERENCES `mydb`.`Account_` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -272,13 +274,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`CustomerHasAddress` (
   CONSTRAINT `fk_CustomerHasAddress_CustomerID`
     FOREIGN KEY (`CustomerID`)
     REFERENCES `mydb`.`Customer` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_CustomerHasAddress_AddressID`
     FOREIGN KEY (`AddressID`)
     REFERENCES `mydb`.`Address` (`AddressID`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -289,7 +291,7 @@ DEFAULT CHARACTER SET = utf8;
 DROP TABLE IF EXISTS `mydb`.`Delivery` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Delivery` (
-  `DeliveryID` INT NOT NULL,
+  `DeliveryID` INT NOT NULL AUTO_INCREMENT,
   `CompanyName` VARCHAR(45) NOT NULL,
   `DateAdded` DATETIME NOT NULL,
   `VehicleTypeID` INT NULL,
@@ -304,22 +306,23 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `mydb`.`DiscountCode` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`DiscountCode` (
-  `DiscountID` INT NOT NULL,
+  `DiscountID` INT NOT NULL AUTO_INCREMENT,
   `Code_` VARCHAR(45) NOT NULL,
   `DateCreate` DATETIME NOT NULL,
   `DateEnd` DATETIME NOT NULL,
-  `MaxDisAmount` INT NOT NULL,
-  `MaxDisPercent` INT NOT NULL,
-  `MaxUsage` INT NOT NULL,
-  `CurrentUsageCount` INT GENERATED ALWAYS AS () VIRTUAL,
-  `AdminID` INT NOT NULL,
+  `MaxDisAmount` INT NOT NULL CHECK (MaxDisAmount > 0),
+  `MaxDisPercent` INT NOT NULL CHECK (0 <= MaxDisPercent AND MaxDisPercent < 100),
+  `MaxUsage` INT NOT NULL CHECK (0 < MaxUsage),
+  `CurrentUsageCount` INT NOT NULL,
+  `AdminID` INT,
   PRIMARY KEY (`DiscountID`),
   INDEX `fk_DiscountCode_AdminID_idx` (`AdminID` ASC) VISIBLE,
   CONSTRAINT `fk_DiscountCode_AdminID`
     FOREIGN KEY (`AdminID`)
     REFERENCES `mydb`.`Admin` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `c_DiscountCode_Valid_Range` CHECK (DateEnd <= DateCreate))
 ENGINE = InnoDB;
 
 
@@ -329,14 +332,14 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `mydb`.`Order_` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Order_` (
-  `OrderID` INT NOT NULL,
-  `IsComplete` TINYINT NOT NULL,
+  `OrderID` INT NOT NULL AUTO_INCREMENT,
+  `IsComplete` TINYINT NOT NULL CHECK (0 <= IsComplete AND IsComplete <= 1),
   `DateCreate` DATETIME NOT NULL,
-  `CurrentState` INT NOT NULL,
-  `FullDeliveryFee` INT GENERATED ALWAYS AS (),
+  `CurrentState` INT NOT NULL CHECK (1 <= CurrentState AND CurrentState <= 5),
+  `FullDeliveryFee` INT NOT NULL,
   `AddressID` INT NOT NULL,
-  `CustomerID` INT NOT NULL,
-  `DiscountCodeID` INT NOT NULL,
+  `CustomerID` INT,
+  `DiscountCodeID` INT,
   PRIMARY KEY (`OrderID`),
   INDEX `fk_Order_AddressID_idx` (`AddressID` ASC) VISIBLE,
   INDEX `fk_Order_CustomerID_idx` (`CustomerID` ASC) VISIBLE,
@@ -345,17 +348,17 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Order_` (
     FOREIGN KEY (`AddressID`)
     REFERENCES `mydb`.`Address` (`AddressID`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Order_CustomerID`
     FOREIGN KEY (`CustomerID`)
     REFERENCES `mydb`.`Customer` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Order_DiscountCodeID`
     FOREIGN KEY (`DiscountCodeID`)
     REFERENCES `mydb`.`DiscountCode` (`DiscountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -366,7 +369,7 @@ DEFAULT CHARACTER SET = utf8;
 DROP TABLE IF EXISTS `mydb`.`PaymentMethod` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`PaymentMethod` (
-  `PaymentMethodID` INT NOT NULL,
+  `PaymentMethodID` INT NOT NULL AUTO_INCREMENT,
   `Name` VARCHAR(45) NOT NULL,
   `Address` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`PaymentMethodID`))
@@ -383,11 +386,11 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Picture` (
   `ID` INT NOT NULL,
   `PictureValue` BLOB NOT NULL,
   PRIMARY KEY (`ProductID`, `ID`),
-  CONSTRAINT `ProductID`
+  CONSTRAINT `fk_Picture_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -397,14 +400,14 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `mydb`.`Product` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Product` (
-  `ProductID` INT NOT NULL,
+  `ProductID` INT NOT NULL AUTO_INCREMENT,
   `Name` NVARCHAR(45) NOT NULL,
-  `Price` INT NOT NULL,
+  `Price` INT NOT NULL CHECK (Price > 0),
   `Brand` NVARCHAR(45) NOT NULL,
   `Description` NVARCHAR(100) NULL,
   `DateCreate` DATETIME NOT NULL,
-  `TotalPurchases` INT GENERATED ALWAYS AS () VIRTUAL,
-  `Quantity` INT GENERATED ALWAYS AS () VIRTUAL,
+  `TotalPurchases` INT NOT NULL,
+  `Quantity` INT NOT NULL,
   `CategoryID` INT NOT NULL,
   `SubCategoryID` INT NOT NULL,
   PRIMARY KEY (`ProductID`),
@@ -414,7 +417,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Product` (
     FOREIGN KEY (`CategoryID` , `SubCategoryID`)
     REFERENCES `mydb`.`SubCategory` (`CategoryID` , `SubCategoryID`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -431,13 +434,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`ProductHasAtt` (
   CONSTRAINT `fk_ProductHasAtt_AttributeID`
     FOREIGN KEY (`AttributeID`)
     REFERENCES `mydb`.`Attribute` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_ProductHasAtt_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -449,13 +452,13 @@ DROP TABLE IF EXISTS `mydb`.`PurchaseAmount` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`PurchaseAmount` (
   `ProductID` INT NOT NULL,
-  `PusrchaseAmountValue` INT NOT NULL,
+  `PusrchaseAmountValue` INT UNIQUE NOT NULL CHECK (PusrchaseAmountValue > 0),
   PRIMARY KEY (`ProductID`),
-  CONSTRAINT `ProductID`
+  CONSTRAINT `fk_PurchaseAmount_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -472,8 +475,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Quality` (
   CONSTRAINT `fk_Quality_Att_QualitativeID`
     FOREIGN KEY (`AttQualitativeID`)
     REFERENCES `mydb`.`Att_Qualitative` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -488,19 +491,19 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Review` (
   `CustomerID` INT NOT NULL,
   `Date` DATETIME NOT NULL,
   `Comment` NVARCHAR(100) NULL,
-  `Rate` INT NULL,
+  `Rate` INT NULL CHECK (1 <= Rate AND Rate <= 10),
   PRIMARY KEY (`ProductID`, `CustomerID`),
   INDEX `fk_Review_CustomerID_idx` (`CustomerID` ASC) VISIBLE,
   CONSTRAINT `fk_Review_CustomerID`
     FOREIGN KEY (`CustomerID`)
     REFERENCES `mydb`.`Customer` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Review_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -510,7 +513,7 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `mydb`.`Storage` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Storage` (
-  `StorageID` INT NOT NULL,
+  `StorageID` INT NOT NULL AUTO_INCREMENT,
   `DateAddition` DATETIME NOT NULL,
   `AddressID` INT NOT NULL,
   PRIMARY KEY (`StorageID`),
@@ -520,7 +523,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Storage` (
     FOREIGN KEY (`AddressID`)
     REFERENCES `mydb`.`Address` (`AddressID`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -532,19 +535,19 @@ DROP TABLE IF EXISTS `mydb`.`Stores` ;
 CREATE TABLE IF NOT EXISTS `mydb`.`Stores` (
   `StorageID` INT NOT NULL,
   `ProductID` INT NOT NULL,
-  `Quantity` INT NOT NULL,
+  `Quantity` INT NOT NULL CHECK (0 <= Quantity),
   PRIMARY KEY (`StorageID`, `ProductID`),
   INDEX `fk_Stores_ProductID_idx` (`ProductID` ASC) VISIBLE,
   CONSTRAINT `fk_Stores_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Stores_StorageID`
     FOREIGN KEY (`StorageID`)
     REFERENCES `mydb`.`Storage` (`StorageID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -564,8 +567,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`SubCategory` (
   CONSTRAINT `fk_SubCategory_CateegoryID`
     FOREIGN KEY (`CategoryID`)
     REFERENCES `mydb`.`Category` (`CategoryID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -584,13 +587,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`SubCategoryHasAtt` (
   CONSTRAINT `fk_SubCategoryHasAtt_AttributeID`
     FOREIGN KEY (`AttributeID`)
     REFERENCES `mydb`.`Attribute` (`AttributeID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_SubCategoryHasAtt_SubCategoryID`
     FOREIGN KEY (`CategoryID` , `SubCategoryID`)
     REFERENCES `mydb`.`SubCategory` (`CategoryID` , `SubCategoryID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -603,11 +606,11 @@ DROP TABLE IF EXISTS `mydb`.`SubOrder` ;
 CREATE TABLE IF NOT EXISTS `mydb`.`SubOrder` (
   `OrderID` INT NOT NULL,
   `SubOrderID` INT NOT NULL,
-  `CurrentState` INT UNSIGNED NOT NULL,
+  `CurrentState` INT UNSIGNED NOT NULL CHECK (1 <= CurrentState AND CurrentState <= 5),
   `DateDelivery` DATETIME NOT NULL,
   `DateCreate` DATETIME NOT NULL,
   `DateLastEdit` DATETIME NOT NULL,
-  `StorageID` INT NOT NULL,
+  `StorageID` INT,
   `AddressID` INT NOT NULL,
   PRIMARY KEY (`OrderID`, `SubOrderID`),
   INDEX `fk_SubOrder_StorageID_idx` (`StorageID` ASC) VISIBLE,
@@ -615,18 +618,19 @@ CREATE TABLE IF NOT EXISTS `mydb`.`SubOrder` (
   CONSTRAINT `fk_SubOrder_OrderID`
     FOREIGN KEY (`OrderID`)
     REFERENCES `mydb`.`Order_` (`OrderID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_SubOrder_StorageID`
     FOREIGN KEY (`StorageID`)
     REFERENCES `mydb`.`Storage` (`StorageID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_SubOrder_AddressID`
     FOREIGN KEY (`AddressID`)
     REFERENCES `mydb`.`Address` (`AddressID`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE CASCADE,
+  CONSTRAINT `c_SubOrder_Valid_Range` CHECK (DateCreate <= DateLastEdit AND DateLastEdit <= DateDelivery))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -638,20 +642,21 @@ DROP TABLE IF EXISTS `mydb`.`SubOrderHasProduct` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`SubOrderHasProduct` (
   `ProductID` INT NOT NULL,
+  `OrderID` INT NOT NULL,
   `SubOrderID` INT NOT NULL,
-  `Quantity` INT UNSIGNED NULL,
-  PRIMARY KEY (`ProductID`, `SubOrderID`),
-  INDEX `SubOrderId_idx` (`SubOrderID` ASC) VISIBLE,
-  CONSTRAINT `ProductId`
+  `Quantity` INT UNSIGNED NULL CHECK (Quantity > 0),
+  PRIMARY KEY (`ProductID`, `SubOrderID`, `OrderID`),
+  INDEX `SubOrderId_idx` (`SubOrderID` ASC, `OrderID` ASC) VISIBLE,
+  CONSTRAINT `fk_SubOrderHasProduct_ProductId`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `SubOrderId`
-    FOREIGN KEY (`SubOrderID`)
-    REFERENCES `mydb`.`SubOrder` (`SubOrderID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_SubOrderHasProduct_SubOrderId`
+    FOREIGN KEY (`OrderID` , `SubOrderID`)
+    REFERENCES `mydb`.`SubOrder` (`OrderID` , `SubOrderID`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -661,25 +666,25 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `mydb`.`Transaction_` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Transaction_` (
-  `TransactionID` INT NOT NULL,
-  `Value_` INT NOT NULL DEFAULT 0,
-  `CurrentState` INT NOT NULL,
+  `TransactionID` INT NOT NULL AUTO_INCREMENT,
+  `Value_` INT NOT NULL DEFAULT 0 CHECK (Value_ >= 0),
+  `CurrentState` INT NOT NULL CHECK (1 <= CurrentState AND CurrentState <= 3),
   `Date` DATETIME NOT NULL,
-  `AccountID` INT NOT NULL,
-  `PaymentMethodID` INT NOT NULL,
+  `AccountID` INT,
+  `PaymentMethodID` INT,
   PRIMARY KEY (`TransactionID`),
   INDEX `fk_Transaction_AccountID_idx` (`AccountID` ASC) VISIBLE,
   INDEX `fk_Transaction_PaymentMethodID_idx` (`PaymentMethodID` ASC) VISIBLE,
   CONSTRAINT `fk_Transaction_AccountID0`
     FOREIGN KEY (`AccountID`)
     REFERENCES `mydb`.`Account_` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Transaction_PaymentMethodID0`
     FOREIGN KEY (`PaymentMethodID`)
     REFERENCES `mydb`.`PaymentMethod` (`PaymentMethodID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -690,14 +695,14 @@ DEFAULT CHARACTER SET = utf8;
 DROP TABLE IF EXISTS `mydb`.`Transfer` ;
 
 CREATE TABLE IF NOT EXISTS `mydb`.`Transfer` (
-  `TransferID` INT NOT NULL,
-  `Fee` INT UNSIGNED NOT NULL DEFAULT 0,
+  `TransferID` INT NOT NULL AUTO_INCREMENT,
+  `Fee` INT UNSIGNED NOT NULL DEFAULT 0 CHECK (Fee >= 0),
   `Date` DATETIME NOT NULL,
-  `DeliveryID` INT NOT NULL,
-  `FromStorageID` INT NOT NULL,
+  `DeliveryID` INT,
+  `FromStorageID` INT,
   `ToAddressID` INT NOT NULL,
-  `OrderID` INT NULL,
-  `SubOrderID` INT NULL,
+  `OrderID` INT,
+  `SubOrderID` INT,
   PRIMARY KEY (`TransferID`),
   INDEX `fk_Transfer_DeliveryID_idx` (`DeliveryID` ASC) VISIBLE,
   INDEX `fk_Transfer_AddressID_idx` (`ToAddressID` ASC) VISIBLE,
@@ -707,28 +712,28 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Transfer` (
   CONSTRAINT `fk_Transfer_DeliveryID`
     FOREIGN KEY (`DeliveryID`)
     REFERENCES `mydb`.`Delivery` (`DeliveryID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Transfer_AddressID`
     FOREIGN KEY (`ToAddressID`)
     REFERENCES `mydb`.`Address` (`AddressID`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Transfer_StorageID`
     FOREIGN KEY (`FromStorageID`)
     REFERENCES `mydb`.`Storage` (`StorageID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Transfer_OrderID`
     FOREIGN KEY (`OrderID`)
     REFERENCES `mydb`.`Order_` (`OrderID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Transfer_SubOrderID`
-    FOREIGN KEY (`SubOrderID`)
-    REFERENCES `mydb`.`SubOrder` (`SubOrderID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    FOREIGN KEY (`OrderID` , `SubOrderID`)
+    REFERENCES `mydb`.`SubOrder` (`OrderID` , `SubOrderID`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -746,13 +751,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Uses` (
   CONSTRAINT `fk_Uses_CustomerID`
     FOREIGN KEY (`CustomerID`)
     REFERENCES `mydb`.`Customer` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_Uses_DiscountCodeID`
     FOREIGN KEY (`DiscountCodeID`)
     REFERENCES `mydb`.`DiscountCode` (`DiscountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -765,11 +770,11 @@ CREATE TABLE IF NOT EXISTS `mydb`.`VehicleType` (
   `DeliveryID` INT NOT NULL,
   `VehicleTypeValue` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`DeliveryID`, `VehicleTypeValue`),
-  CONSTRAINT `DeliveryID`
+  CONSTRAINT `fk_VehicleType_DeliveryID`
     FOREIGN KEY (`DeliveryID`)
     REFERENCES `mydb`.`Delivery` (`DeliveryID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -783,11 +788,11 @@ CREATE TABLE IF NOT EXISTS `mydb`.`Video` (
   `ID` INT NOT NULL,
   `VideoValue` BLOB NOT NULL,
   PRIMARY KEY (`ProductID`, `ID`),
-  CONSTRAINT `ProductID`
+  CONSTRAINT `fk_Video_ProductID`
     FOREIGN KEY (`ProductID`)
     REFERENCES `mydb`.`Product` (`ProductID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 
@@ -804,13 +809,13 @@ CREATE TABLE IF NOT EXISTS `mydb`.`WorksOrManages` (
   CONSTRAINT `fk_WorksOrManages_StorageID`
     FOREIGN KEY (`StorageID`)
     REFERENCES `mydb`.`Storage` (`StorageID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
   CONSTRAINT `fk_WorksOrManages_AdminID`
     FOREIGN KEY (`AdminID`)
     REFERENCES `mydb`.`Admin` (`AccountID`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 USE `mydb` ;
@@ -823,7 +828,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`AccountInfo` (`AccountId` INT, `FirstName` IN
 -- -----------------------------------------------------
 -- Placeholder table for view `mydb`.`CartSummary`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`CartSummary` (`CostumerID` INT, `DateLastEdit` INT, `Price` INT);
+CREATE TABLE IF NOT EXISTS `mydb`.`CartSummary` (`CustomerID` INT, `DateLastEdit` INT, `Price` INT);
 
 -- -----------------------------------------------------
 -- Placeholder table for view `mydb`.`AccountOrderSummary`
@@ -876,7 +881,7 @@ CREATE TABLE IF NOT EXISTS `mydb`.`ProductRate` (`ProductID` INT, `AVG(Rate)` IN
 DROP TABLE IF EXISTS `mydb`.`AccountInfo`;
 DROP VIEW IF EXISTS `mydb`.`AccountInfo` ;
 USE `mydb`;
-CREATE  OR REPLACE VIEW `AccountInfo` AS SELECT AccountId, FirstName, LastName, DateCreate, Email FROM Account;
+CREATE  OR REPLACE VIEW `AccountInfo` AS SELECT AccountId, FirstName, LastName, DateCreate, Email FROM Account_;
 
 -- -----------------------------------------------------
 -- View `mydb`.`CartSummary`
@@ -884,21 +889,11 @@ CREATE  OR REPLACE VIEW `AccountInfo` AS SELECT AccountId, FirstName, LastName, 
 DROP TABLE IF EXISTS `mydb`.`CartSummary`;
 DROP VIEW IF EXISTS `mydb`.`CartSummary` ;
 USE `mydb`;
-CREATE  OR REPLACE VIEW `CartSummary` AS SELECT Cart.CostumerID, Cart.DateLastEdit, SUM(Product.Price * CartContainsProduct.Quantity) AS Price
+CREATE  OR REPLACE VIEW `CartSummary` AS SELECT Cart.CustomerID, Cart.DateLastEdit, SUM(Product.Price * CartContainsProduct.Quantity) AS Price
 FROM 
-Cart JOIN CartContainsProduct ON Cart.CostumerID = CartContainsProduct.CartID 
+Cart JOIN CartContainsProduct ON Cart.CustomerID = CartContainsProduct.CartID 
 JOIN Product ON Product.ProductID = CartContainsProduct.ProductID
-GROUP BY Cart.CartID;
-
--- -----------------------------------------------------
--- View `mydb`.`AccountOrderSummary`
--- -----------------------------------------------------
-DROP TABLE IF EXISTS `mydb`.`AccountOrderSummary`;
-DROP VIEW IF EXISTS `mydb`.`AccountOrderSummary` ;
-USE `mydb`;
-CREATE  OR REPLACE VIEW `AccountOrderSummary` AS SELECT Account_.AccountID, SUM(OrderSummary.Price) AS Paid
-FROM Account_ JOIN OrderSummary ON Account_.AccountID = OrderSummary.AccountID
-GROUP BY OrderSummary.AccountID;
+GROUP BY Cart.CustomerID;
 
 -- -----------------------------------------------------
 -- View `mydb`.`AccountBalance`
@@ -906,7 +901,7 @@ GROUP BY OrderSummary.AccountID;
 DROP TABLE IF EXISTS `mydb`.`AccountBalance`;
 DROP VIEW IF EXISTS `mydb`.`AccountBalance` ;
 USE `mydb`;
-CREATE  OR REPLACE VIEW `AccountBalance` AS SELECT AccountID, Value_ - Paid AS Balance
+CREATE  OR REPLACE VIEW `AccountBalance` AS SELECT Account_.AccountID, Value_ - Paid AS Balance
 FROM Account_ JOIN AccountTransactionSummary ON Account_.AccountID = AccountTransactionSummary.AccountID
 JOIN AccountOrderSummary ON Account_.AccountID = AccountOrderSummary.AccountID;
 
@@ -921,29 +916,39 @@ FROM Order_ JOIN SubOrder ON Order_.OrderID = SubOrder.OrderID
 JOIN SubOrderHasProduct ON SubOrderHasProduct.SubOrderID = SubOrder.SubOrderID
 GROUP BY SubOrderHasProduct.ProductID;
 
--- -----------------------------------------------------
--- View `mydb`.`OrderSummary`
--- -----------------------------------------------------
-DROP TABLE IF EXISTS `mydb`.`OrderSummary`;
-DROP VIEW IF EXISTS `mydb`.`OrderSummary` ;
-USE `mydb`;
-CREATE  OR REPLACE VIEW `OrderSummary` AS SELECT OrderSummaryByProduct, (SELECT MAX(Price_)
-	FROM (VALUES 
-    ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) * DiscountCode.MaxDisPercent),
-    ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) - DiscountCode.MaxDisAmount)) AS AllPrices(Price_))
-    AS Price
+-- ------------------------------- ------------------------
+-- -- View `mydb`.`OrderSummary`
+-- -- -----------------------------------------------------
+-- DROP TABLE IF EXISTS `mydb`.`OrderSummary`;
+-- DROP VIEW IF EXISTS `mydb`.`OrderSummary` ;
+-- USE `mydb`;
+-- CREATE  OR REPLACE VIEW `OrderSummary` AS SELECT OrderSummaryByProduct.OrderID, (SELECT MAX(Price_)
+-- 	FROM (VALUES 
+--     ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) * DiscountCode.MaxDisPercent),
+--     ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) - DiscountCode.MaxDisAmount)) AS AllPrices(Price_))
+--     AS Price
 
-FROM OrderSummaryByProduct JOIN Product ON Product.ProductID = OrderSummaryByProduct.ProductID
-RIGHT JOIN DiscountCode ON DiscountCode.DiscountID = OrderSummaryByProduct.DiscountCodeID
-GROUP BY OrderSummaryByProduct.OrderID;
+-- FROM OrderSummaryByProduct JOIN Product ON Product.ProductID = OrderSummaryByProduct.ProductID
+-- RIGHT JOIN DiscountCode ON DiscountCode.DiscountID = OrderSummaryByProduct.DiscountCodeID
+-- GROUP BY OrderSummaryByProduct.OrderID;
 
--- -----------------------------------------------------
+-- -- -----------------------------------------------------
+-- -- View `mydb`.`AccountOrderSummary`
+-- -- -----------------------------------------------------
+-- DROP TABLE IF EXISTS `mydb`.`AccountOrderSummary`;
+-- DROP VIEW IF EXISTS `mydb`.`AccountOrderSummary` ;
+-- USE `mydb`;
+-- CREATE  OR REPLACE VIEW `AccountOrderSummary` AS SELECT Account_.AccountID, SUM(OrderSummary.Price) AS Paid
+-- FROM Account_ JOIN OrderSummary ON Account_.AccountID = OrderSummary.AccountID
+-- GROUP BY OrderSummary.AccountID;
+
+-----------------------------------------------------
 -- View `mydb`.`OrderTransfers`
 -- -----------------------------------------------------
 DROP TABLE IF EXISTS `mydb`.`OrderTransfers`;
 DROP VIEW IF EXISTS `mydb`.`OrderTransfers` ;
 USE `mydb`;
-CREATE  OR REPLACE VIEW `OrderTransfers` AS SELECT Transfer.TransferID, CustomerID, Fee, Date, DeliveryID, FromStorageID, TOAddressID, OrderID
+CREATE  OR REPLACE VIEW `OrderTransfers` AS SELECT Transfer.TransferID, CustomerID, Fee, Date, DeliveryID, FromStorageID, TOAddressID, Order_.OrderID
 FROM Transfer JOIN Order_ ON Transfer.OrderID = Order_.OrderID;
 
 -- -----------------------------------------------------
@@ -981,10 +986,10 @@ FROM DiscountCode JOIN Uses ON DiscountCode.DiscountID = Uses.DiscountCodeID;
 DROP TABLE IF EXISTS `mydb`.`ProductRate`;
 DROP VIEW IF EXISTS `mydb`.`ProductRate` ;
 USE `mydb`;
-CREATE  OR REPLACE VIEW `ProductRate` AS SELECT ProductID, AVG(Rate)
+CREATE  OR REPLACE VIEW `ProductRate` AS SELECT Product.ProductID, AVG(Rate)
 FROM Product JOIN Review ON Product.ProductID = Review.ProductID
 GROUP BY ProductID;
 
 SET SQL_MODE=@OLD_SQL_MODE;
-SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
-SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+SET FOREIGN_KEY_CHECKS=1;
+SET UNIQUE_CHECKS=1;
