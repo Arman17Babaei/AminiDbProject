@@ -31,6 +31,38 @@ def insert():
     return "Done!"
 
 
+@app.route("/update", methods=["GET"])
+def update():
+    table = request.args.get("table")
+    if not table_is_safe(table):
+        return Response("Bad table name!", status=400)
+
+    update_column = request.args.get("updateColumn")
+    if update_column not in column_name:
+        return Response(f"Bad column name `{update_column}`!", status=400)
+
+    values = []
+    columns = []
+    for column in request.args.keys():
+        if column in ["table", "updateColumn", "updateValue"]:
+            continue
+        if column in column_name:
+            columns.append(column)
+            values.append(request.args.get(column))
+        else:
+            return Response(f"Bad column name `{column}`!", status=400)
+
+    query = f"UPDATE {table} "
+    query += f"SET {update_column} = %s "
+    if len(columns) > 0:
+        query += f"WHERE {' AND '.join([f'{column} = %s' for column in columns])} "
+    values = [request.args.get("updateValue")] + values
+    print(query, values)
+    cursor.execute(query, values)
+    db.commit()
+    return "Done!"
+
+
 @app.route("/select", methods=["GET"])
 def select():
     table = request.args.get("table")
@@ -39,12 +71,12 @@ def select():
 
     if "select" in request.args.keys():
         select = []
-        for column in request.args.get("select").split(','):
+        for column in request.args.get("select").split(","):
             if column not in column_name:
                 return Response(f"Bad column name `{column}`!", status=400)
             select.append(column)
     else:
-        select = ['*']
+        select = ["*"]
 
     values = []
     columns = []
@@ -65,6 +97,57 @@ def select():
     result = cursor.fetchall()
     table = get_html_table(result, select)
     return table
+
+
+class Procedure:
+    procedures = {}
+    name: str
+    script: str
+    has_return: bool
+
+    def __init__(self, name, script, has_return):
+        self.name = name
+        self.script = script
+        self.has_return = has_return
+
+    def add_to_server(self):
+        Procedure.procedures[self.name] = self
+
+    @staticmethod
+    def get(name):
+        return Procedure.procedures[name]
+
+
+@app.route("/proc", methods=["GET"])
+def procedure():
+    name = request.args.get("name")
+    proc = Procedure.get(name)
+    values = request.args.get("values").split(",")
+    print(proc.script, values)
+    cursor.execute(proc.script, values)
+    if proc.has_return:
+        result = cursor.fetchall()
+        return get_html_table(result, [])
+    else:
+        db.commit()
+        return "Done!"
+
+
+@app.route("/addProc", methods=["GET"])
+def add_procedure():
+    authorized_users = {"admin": "admin"}
+    username = request.args.get("username")
+    password = request.args.get("password")
+    if authorized_users[username] != password:
+        return Response("Unauthorized access!", status=403)
+
+    Procedure(
+        request.args.get("name"),
+        request.args.get("script"),
+        bool(request.args.get("hasReturn")),
+    ).add_to_server()
+
+    return "Done!"
 
 
 def get_html_table(result, select):
