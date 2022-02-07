@@ -920,36 +920,36 @@ JOIN AccountOrderSummary ON Account_.AccountID = AccountOrderSummary.AccountID;
 DROP TABLE IF EXISTS `mydb`.`OrderSummaryByProduct`;
 DROP VIEW IF EXISTS `mydb`.`OrderSummaryByProduct` ;
 USE `mydb`;
-CREATE  OR REPLACE VIEW `OrderSummaryByProduct` AS SELECT Order_.OrderID, SubOrderHasProduct.ProductID, Order_.DiscountCodeID, SUM(SubOrderHasProduct.Quantity) AS Quantity
+CREATE  OR REPLACE VIEW `OrderSummaryByProduct` AS SELECT Order_.CustomerID, Order_.OrderID, SubOrderHasProduct.ProductID, Order_.DiscountCodeID, SUM(SubOrderHasProduct.Quantity) AS Quantity
 FROM Order_ JOIN SubOrder ON Order_.OrderID = SubOrder.OrderID
 JOIN SubOrderHasProduct ON SubOrderHasProduct.SubOrderID = SubOrder.SubOrderID
 GROUP BY SubOrderHasProduct.ProductID;
 
--- ------------------------------- ------------------------
--- -- View `mydb`.`OrderSummary`
--- -- -----------------------------------------------------
--- DROP TABLE IF EXISTS `mydb`.`OrderSummary`;
--- DROP VIEW IF EXISTS `mydb`.`OrderSummary` ;
--- USE `mydb`;
--- CREATE  OR REPLACE VIEW `OrderSummary` AS SELECT OrderSummaryByProduct.OrderID, (SELECT MAX(Price_)
--- 	FROM (VALUES 
---     ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) * DiscountCode.MaxDisPercent),
---     ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) - DiscountCode.MaxDisAmount)) AS AllPrices(Price_))
---     AS Price
+-- -----------------------------------------------------
+-- View `mydb`.`OrderSummary`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `mydb`.`OrderSummary`;
+DROP VIEW IF EXISTS `mydb`.`OrderSummary` ;
+USE `mydb`;
+CREATE  OR REPLACE VIEW `OrderSummary` AS SELECT OrderSummaryByProduct.*, (SELECT MAX(Price_)
+	FROM (VALUES 
+    ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) * DiscountCode.MaxDisPercent),
+    ROW(SUM(Product.Price * OrderSummaryByProduct.Quantity) - DiscountCode.MaxDisAmount)) AS AllPrices(Price_))
+    AS Price
 
--- FROM OrderSummaryByProduct JOIN Product ON Product.ProductID = OrderSummaryByProduct.ProductID
--- RIGHT JOIN DiscountCode ON DiscountCode.DiscountID = OrderSummaryByProduct.DiscountCodeID
--- GROUP BY OrderSummaryByProduct.OrderID;
+FROM OrderSummaryByProduct JOIN Product ON Product.ProductID = OrderSummaryByProduct.ProductID
+RIGHT JOIN DiscountCode ON DiscountCode.DiscountID = OrderSummaryByProduct.DiscountCodeID
+GROUP BY OrderSummaryByProduct.OrderID;
 
--- -- -----------------------------------------------------
--- -- View `mydb`.`AccountOrderSummary`
--- -- -----------------------------------------------------
--- DROP TABLE IF EXISTS `mydb`.`AccountOrderSummary`;
--- DROP VIEW IF EXISTS `mydb`.`AccountOrderSummary` ;
--- USE `mydb`;
--- CREATE  OR REPLACE VIEW `AccountOrderSummary` AS SELECT Account_.AccountID, SUM(OrderSummary.Price) AS Paid
--- FROM Account_ JOIN OrderSummary ON Account_.AccountID = OrderSummary.AccountID
--- GROUP BY OrderSummary.AccountID;
+-- -----------------------------------------------------
+-- View `mydb`.`AccountOrderSummary`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `mydb`.`AccountOrderSummary`;
+DROP VIEW IF EXISTS `mydb`.`AccountOrderSummary` ;
+USE `mydb`;
+CREATE  OR REPLACE VIEW `AccountOrderSummary` AS SELECT Account_.AccountID, SUM(OrderSummary.Price) AS Paid
+FROM Account_ JOIN OrderSummary ON Account_.AccountID = OrderSummary.CustomerID
+GROUP BY OrderSummary.CustomerID;
 
 -----------------------------------------------------
 -- View `mydb`.`OrderTransfers`

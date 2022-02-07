@@ -382,6 +382,19 @@ table_names = [
     "VehicleType",
     "Video",
     "WorksOrManages",
+
+    # Views
+    "AccountInfo",
+    "CartSummary",
+    "AccountBalance",
+    "OrderSummaryByProduct",
+    "OrderSummary",
+    "AccountOrderSummary",
+    "OrderTransfers",
+    "SubOrderTransfers",
+    "AccountTransactionSummary",
+    "CustomerDiscount",
+    "ProductRate",
 ]
 
 
