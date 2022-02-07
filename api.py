@@ -99,6 +99,32 @@ def select():
     return table
 
 
+@app.route("/delete", methods=["GET"])
+def delete():
+    table = request.args.get("table")
+    if not table_is_safe(table):
+        return Response("Bad table name!", status=400)
+
+    values = []
+    columns = []
+    for column in request.args.keys():
+        if column == "table":
+            continue
+        if column in column_name:
+            columns.append(column)
+            values.append(request.args.get(column))
+        else:
+            return Response(f"Bad column name `{column}`!", status=400)
+
+    query = f"DELETE FROM {table} "
+    if len(columns) > 0:
+        query += f"WHERE {' AND '.join([f'{column} = %s' for column in columns])}"
+
+    cursor.execute(query, values)
+    db.commit()
+    return "Done!"
+
+
 class Procedure:
     procedures = {}
     name: str
