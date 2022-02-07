@@ -110,3 +110,25 @@ GRANT SELECT, INSERT, DELETE, UPDATE(`CompanyName`, `VehicleTypeID`) ON `mydb`.`
 GRANT SELECT, INSERT, DELETE, UPDATE(`VehicleTypeValue`) ON `mydb`.`VehicleType`
 	TO 'APUser'@'localhost';
 
+GRANT SELECT ON `mydb`.`AccountInfo`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`CartSummary`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`AccountBalance`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`OrderSummaryByProduct`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`OrderSummary`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`AccountOrderSummary`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`OrderTransfers`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`SubOrderTransfers`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`AccountTransactionSummary`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`CustomerDiscount`
+	TO 'APUser'@'localhost';
+GRANT SELECT ON `mydb`.`ProductRate`
+	TO 'APUser'@'localhost';
